@@ -8,10 +8,10 @@ EXTERN myPrologKiSystemCall64:QWORD;
 ;Secure the registers and the stack :D
 myKiSystemCall64ASM PROC
 	swapgs ;USER->KERNEL
-	;mov qword ptr gs:[10h],rsp ;save stack pointer
+	mov qword ptr gs:[10h],rsp ;save stack pointer
 	mov rsp,qword ptr gs:[1a8h] ;get stack pointer
 	sub rsp,4096h ;far far away !
-	
+
 	;TODO: FPU registers
 	mov [rsp+8],rax ;save register
 	mov [rsp+16],rbx
@@ -28,11 +28,11 @@ myKiSystemCall64ASM PROC
 	mov [rsp+104],r14
 	mov [rsp+112],r15
 	sub rsp, 120
-	
+
 	;TODO: poosh poosh ret !
 	mov rax, qword ptr [myPrologKiSystemCall64];
 	call rax;
-	
+
 	add	rsp, 120 
 	mov rax,[rsp+8] ;restore register
 	mov rbx,[rsp+16]
@@ -48,11 +48,11 @@ myKiSystemCall64ASM PROC
 	mov r13,[rsp+96]
 	mov r14,[rsp+104]
 	mov r15,[rsp+112]
-	
+
 	;add rsp,4096h ; dont need this !
 	mov rsp,qword ptr gs:[10h]
 	swapgs ;KERNEL->USER
-	
+
 	jmp [origKiSystemCall64]
 myKiSystemCall64ASM ENDP
 
