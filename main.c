@@ -10,9 +10,10 @@ typedef VOID(*KISYSTEMCALL64)();
 KISYSTEMCALL64 origKiSystemCall64[MAX_ACTIVE_CPU];
 KISYSTEMCALL64 myPrologKiSystemCall64;
 ULONG active_processor_count;
+UINT64 syscall_number;
 
 VOID prologKiSystemCall64(){
-	DbgPrint("In other words, please be true\n");
+	DbgPrint("In other words, please be true %16x\n", syscall_number);
 }
 
 VOID DisplayAllLSTAR(){

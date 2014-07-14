@@ -1,5 +1,6 @@
-EXTERN origKiSystemCall64:QWORD;
-EXTERN myPrologKiSystemCall64:QWORD;
+EXTERN origKiSystemCall64:QWORD
+EXTERN myPrologKiSystemCall64:QWORD
+EXTERN syscall_number:QWORD
 
 .data
 
@@ -29,6 +30,8 @@ myKiSystemCall64ASM PROC
 	mov [rsp+112],r15
 	sub rsp, 120
 
+	mov qword ptr [syscall_number],rax
+	
 	call qword ptr [myPrologKiSystemCall64];
 
 	add rsp, 120 
