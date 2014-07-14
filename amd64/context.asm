@@ -29,11 +29,9 @@ myKiSystemCall64ASM PROC
 	mov [rsp+112],r15
 	sub rsp, 120
 
-	;TODO: poosh poosh ret !
-	mov rax, qword ptr [myPrologKiSystemCall64];
-	call rax;
+	call qword ptr [myPrologKiSystemCall64];
 
-	add	rsp, 120 
+	add rsp, 120 
 	mov rax,[rsp+8] ;restore register
 	mov rbx,[rsp+16]
 	mov rcx,[rsp+24]
@@ -49,11 +47,10 @@ myKiSystemCall64ASM PROC
 	mov r14,[rsp+104]
 	mov r15,[rsp+112]
 
-	;add rsp,4096h ; dont need this !
-	mov rsp,qword ptr gs:[10h]
+	mov rsp,qword ptr gs:[10h] ;restore original stack
 	swapgs ;KERNEL->USER
 
-	jmp [origKiSystemCall64]
+	jmp [origKiSystemCall64] ;jmp to orginal KiSystemCall64
 myKiSystemCall64ASM ENDP
 
 END
