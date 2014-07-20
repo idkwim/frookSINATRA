@@ -22,7 +22,7 @@ On unload, the driver:
 	
 	This is working because when a sysenter/syscall is done, the LSTAR MSR isn't read via rdmsr, and hypervisor isn't call. So the given LSTAR value is the hook (if hooked).
 	
-<b>NOTE:<b>
+<b>NOTE:</b>
 	The driver can be loaded with dsefix (http://www.kernelmode.info/forum/viewtopic.php?f=11&t=3322)
 	The driver can work on Windows 7 x64 without the hypervisor
 
@@ -30,4 +30,5 @@ On unload, the driver:
 	Make a version where all the thing is done in hypervisor, write the hook EIP in a magic MSR...
 	Make it working with AMD, 2 lines to change,
 	Could be integrated in (this nice tool) https://github.com/zer0mem/MiniHyperVisorProject, to make it working on a live Windows (pluePill+Intercept R/W MSR+frookSINATRA = Rootkit ;p)
+	Real syscall analysis...but this is a Poc...
 </pre>
