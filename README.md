@@ -29,6 +29,6 @@ On unload, the driver:
 <b>TODO:</b>
 	* Make a version where all the thing is done in hypervisor, write the hook EIP in a magic MSR...
 	* Make it working with AMD, 2 lines to change,
-	* Could be integrated in (this nice tool) https://github.com/zer0mem/MiniHyperVisorProject, to make it working on a live Windows (pluePill+Intercept R/W MSR+frookSINATRA = Rootkit ;p)
+	* Could be integrated in (this nice tool) https://github.com/zer0mem/MiniHyperVisorProject, to make it working on a live Windows (bluePill+Intercept R/W MSR+frookSINATRA = Rootkit ;p)
 	* Real syscall analysis...but this is a Poc...
 </pre>
