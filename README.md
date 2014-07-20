@@ -5,8 +5,8 @@ is a kernel driver and a Virtualbox(Hypervisor) patch to make possible hook of t
 
 <b>DRIVER:</b>
 On Load, the driver:
-	1. save the old lSTAR,
-	2. ask the hypervisor (MSR Knocking) to save the old LSTAR too,
+	1. save the original lSTAR,
+	2. ask the hypervisor (MSR Knocking) to save the original LSTAR too,
 	3. write the LSTAR to with the address of the hook function,
 	4. ... Working here ...
 
@@ -18,9 +18,9 @@ On unload, the driver:
 <b>HYPERVISOR:</b>
 	I changed the virtualbox (Dirty patch again) VT-X hypervisor HMVMXR0.cpp, to intercept read and write of MSR.
 	When the kernel (Linux or Windows) write a magic value on a magic MSR, the LSTAR is stored.
-	When Patchguard ask the register asm("rdmsr 0xC000005") http://pastebin.com/mGbFHkk5, the hypervisor intercept the read, and give the value stored, even if it was hooked by a driver :p
+	When Patchguard ask the register asm("rdmsr 0xC000005") http://pastebin.com/mGbFHkk5, the hypervisor intercept the read, and give the original LSTAR value (legit one), even if it was hooked by the driver !
 	
-	This is working because when a sysenter/syscall is done, the LSTAR MSR isn't read via rdmsr, and hypervisor isn't call. So the given LSTAR value is the hook (if hooked).
+	This is working because when a sysenter/syscall is made, the LSTAR MSR isn't read via rdmsr instruction, but read by the CPU itself, and hypervisor isn't call. So the given LSTAR value is the hook (if hooked).
 	
 <b>NOTE:</b>
 	The driver can be loaded with dsefix (http://www.kernelmode.info/forum/viewtopic.php?f=11&t=3322)
