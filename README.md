@@ -6,7 +6,7 @@ is a kernel driver and a Virtualbox(Hypervisor) patch to make possible hook of t
 <b>DRIVER:</b>
 On Load, the driver:
 	1. save the old lSTAR,
-	2. ask the hypervisor (MSR Knoocking) to save the old LSTAR too,
+	2. ask the hypervisor (MSR Knocking) to save the old LSTAR too,
 	3. write the LSTAR to is hook,
 	4. ... Working here
 
