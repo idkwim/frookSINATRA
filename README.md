@@ -20,7 +20,7 @@ On unload, the driver:
 	When the kernel (Linux or Windows) write a magic value on a magic MSR, the LSTAR is stored.
 	When Patchguard ask the register asm("rdmsr 0xC000005") http://pastebin.com/mGbFHkk5, the hypervisor intercept the read, and give the original LSTAR value (legit one), even if it was hooked by the driver !
 	
-	This is working because when a sysenter/syscall is made, the LSTAR MSR isn't read via rdmsr instruction, but read by the CPU itself, and hypervisor isn't call. So the given LSTAR value is the hook (if hooked).
+	This is working because when a sysenter/syscall is made, the LSTAR MSR isn't read via rdmsr instruction, but read by the CPU itself, and hypervisor isn't call. So the instruction flow is redirected by the true value of the LSTAR, the hook function if hooked.
 	
 <b>NOTE:</b>
 	The driver can be loaded with dsefix (http://www.kernelmode.info/forum/viewtopic.php?f=11&t=3322)
