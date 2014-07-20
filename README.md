@@ -20,7 +20,7 @@ On unload, the driver:
 	When the kernel (Linux or Windows) write a magic value on a magic MSR, the LSTAR is stored.
 	When Patchguard ask the register asm("rdmsr 0xC000005"), the hypervisor intercept the read, and give the value stored, even if it was hooked by a driver :p
 	
-	This is working because when a sysenter/syscall is done, the msr isn't read, and hypervisor isn't call, so the MSR setted as hook EIP and not detected
+	This is working because when a sysenter/syscall is done, the LSTAR MSR isn't read via rdmsr, and hypervisor isn't call. So the given LSTAR value is the hook (if hooked).
 	
 
 <b>TODO:</b>
