@@ -7,12 +7,12 @@ is a kernel driver and a Virtualbox(Hypervisor) patch to make possible hook of t
 On Load, the driver:
 	1. save the old lSTAR,
 	2. ask the hypervisor (MSR Knocking) to save the old LSTAR too,
-	3. write the LSTAR to is hook,
-	4. ... Working here
+	3. write the LSTAR to with the address of the hook function,
+	4. ... Working here ...
 
 On unload, the driver:
 	6. restore the old LSTAR
-	5. ask the hypervisor to forget the LSTAR
+	5. ask the hypervisor to forget the old LSTAR
 	
 	
 <b>HYPERVISOR:</b>
