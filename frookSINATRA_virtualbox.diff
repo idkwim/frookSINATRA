@@ -1,0 +1,130 @@
+diff -bur VirtualBox-4.3.12-orig/include/VBox/vmm/cpum.h VirtualBox-4.3.12/include/VBox/vmm/cpum.h
+--- VirtualBox-4.3.12-orig/include/VBox/vmm/cpum.h	2014-05-16 14:18:35.000000000 +0200
++++ VirtualBox-4.3.12/include/VBox/vmm/cpum.h	2014-07-20 07:45:03.210379986 +0200
+@@ -420,6 +420,10 @@
+ VMM_INT_DECL(void)  CPUMGuestLazyLoadHiddenSelectorReg(PVMCPU pVCpu, PCPUMSELREG pSReg);
+ VMMR0_INT_DECL(void)        CPUMR0SetGuestTscAux(PVMCPU pVCpu, uint64_t uValue);
+ VMMR0_INT_DECL(uint64_t)    CPUMR0GetGuestTscAux(PVMCPU pVCpu);
++
++//PG Bypass: Allow HMVMXR0.cpp to read the LSTAR
++VMMR0_INT_DECL(uint64_t)    CPUMR0GetGuestMsrLSTAR(PVMCPU pVCpu);
++
+ /** @} */
+diff -bur VirtualBox-4.3.12-orig/src/VBox/VMM/VMMAll/CPUMAllMsrs.cpp VirtualBox-4.3.12/src/VBox/VMM/VMMAll/CPUMAllMsrs.cpp
+--- VirtualBox-4.3.12-orig/src/VBox/VMM/VMMAll/CPUMAllMsrs.cpp	2014-05-16 14:27:25.000000000 +0200
++++ VirtualBox-4.3.12/src/VBox/VMM/VMMAll/CPUMAllMsrs.cpp	2014-07-20 08:09:02.570235345 +0200
+@@ -1384,10 +1384,16 @@
+ }
+ 
+ 
++static uint64_t myMsrLSTAR = 0; //used to update the LSTAR MSR
++static uint64_t savedMsrLSTAR = 0; //used to store the clean LSTAR MSR
+ /** @callback_method_impl{FNCPUMRDMSR} */
+ static DECLCALLBACK(int) cpumMsrRd_Amd64LongSyscallTarget(PVMCPU pVCpu, uint32_t idMsr, PCCPUMMSRRANGE pRange, uint64_t *puValue)
+ {
++	if(savedMsrLSTAR){ // If savedMsrLSTAR is set, so give it :D
++		*puValue = savedMsrLSTAR;
++	}else{
+     *puValue = pVCpu->cpum.s.Guest.msrLSTAR;
++	}
+     return VINF_SUCCESS;
+ }
+ 
+@@ -1401,6 +1407,7 @@
+         return VERR_CPUM_RAISE_GP_0;
+     }
+     pVCpu->cpum.s.Guest.msrLSTAR = uValue;
++    myMsrLSTAR = uValue;
+     return VINF_SUCCESS;
+ }
+ 
+@@ -4950,6 +4957,7 @@
+     int             rc;
+     PVM             pVM    = pVCpu->CTX_SUFF(pVM);
+     PCPUMMSRRANGE   pRange = cpumLookupMsrRange(pVM, idMsr);
++	LogRel(("CPUM: RDMSR %#x (%s) -> %#llx\n", idMsr, pRange->szName, *puValue));
+     if (pRange)
+     {
+         CPUMMSRRDFN  enmRdFn = (CPUMMSRRDFN)pRange->enmRdFn;
+@@ -4962,6 +4970,7 @@
+         STAM_REL_COUNTER_INC(&pVM->cpum.s.cMsrReads);
+ 
+         rc = pfnRdMsr(pVCpu, idMsr, pRange, puValue);
++        LogRel(("CPUM: RDMSR %#x (%s) -> %#llx\n", idMsr, pRange->szName, *puValue));
+         if (RT_SUCCESS(rc))
+         {
+             Log2(("CPUM: RDMSR %#x (%s) -> %#llx\n", idMsr, pRange->szName, *puValue));
+@@ -4978,7 +4987,7 @@
+     }
+     else
+     {
+-        Log(("CPUM: Unknown RDMSR %#x -> #GP(0)\n", idMsr));
++        LogRel(("CPUM: Unknown RDMSR %#x -> #GP(0)\n", idMsr));
+         STAM_REL_COUNTER_INC(&pVM->cpum.s.cMsrReads);
+         STAM_REL_COUNTER_INC(&pVM->cpum.s.cMsrReadsUnknown);
+         rc = VERR_CPUM_RAISE_GP_0;
+@@ -5014,6 +5023,23 @@
+     int             rc;
+     PVM             pVM    = pVCpu->CTX_SUFF(pVM);
+     PCPUMMSRRANGE   pRange = cpumLookupMsrRange(pVM, idMsr);
++    
++//Secret command to store the clean value of the LSTAR
++#define SECRET_MSR	0x01234567
++#define BYPASS_ACTIVATION 0xDEADDEADDEADDEAD
++#define BYPASS_DESACTIVATION 0xC0DEC0DEC0DEC0DE
++	LogRel(("CPUM: WRMSR %#x (%s), %#llx [%#llx]\n", idMsr, pRange->szName, 0, uValue));
++    if(idMsr == SECRET_MSR){
++		if(uValue == BYPASS_ACTIVATION){
++			savedMsrLSTAR = pVCpu->cpum.s.Guest.msrLSTAR;
++			LogRel(("[BYPASS_ACTIVATION] %p\n", savedMsrLSTAR));
++		}
++		if(uValue == BYPASS_DESACTIVATION){
++			savedMsrLSTAR = 0;
++			LogRel(("[BYPASS_DESACTIVATION] %p\n", savedMsrLSTAR));
++		}
++	}
++	
+     if (pRange)
+     {
+         STAM_COUNTER_INC(&pRange->cWrites);
+@@ -5589,4 +5615,15 @@
+     pVCpu->cpum.s.GuestMsrs.msr.TscAux = uValue;
+ }
+ 
++
++//Allow to read LSTAR MSR
++VMMR0_INT_DECL(uint64_t) CPUMR0GetGuestMsrLSTAR(PVMCPU pVCpu)
++{
++	uint64_t tmp = myMsrLSTAR;
++	myMsrLSTAR = 0;
++    return tmp;
++}
++
++
++
+ #endif /* IN_RING0 */
+diff -bur VirtualBox-4.3.12-orig/src/VBox/VMM/VMMR0/HMVMXR0.cpp VirtualBox-4.3.12/src/VBox/VMM/VMMR0/HMVMXR0.cpp
+--- VirtualBox-4.3.12-orig/src/VBox/VMM/VMMR0/HMVMXR0.cpp	2014-05-16 14:27:27.000000000 +0200
++++ VirtualBox-4.3.12/src/VBox/VMM/VMMR0/HMVMXR0.cpp	2014-07-20 07:29:30.124092866 +0200
+@@ -1864,7 +1864,9 @@
+         hmR0VmxSetMsrPermission(pVCpu, MSR_IA32_SYSENTER_CS,  VMXMSREXIT_PASSTHRU_READ, VMXMSREXIT_PASSTHRU_WRITE);
+         hmR0VmxSetMsrPermission(pVCpu, MSR_IA32_SYSENTER_ESP, VMXMSREXIT_PASSTHRU_READ, VMXMSREXIT_PASSTHRU_WRITE);
+         hmR0VmxSetMsrPermission(pVCpu, MSR_IA32_SYSENTER_EIP, VMXMSREXIT_PASSTHRU_READ, VMXMSREXIT_PASSTHRU_WRITE);
+-        hmR0VmxSetMsrPermission(pVCpu, MSR_K8_LSTAR,          VMXMSREXIT_PASSTHRU_READ, VMXMSREXIT_PASSTHRU_WRITE);
++        //hmR0VmxSetMsrPermission(pVCpu, MSR_K8_LSTAR,          VMXMSREXIT_PASSTHRU_READ, VMXMSREXIT_PASSTHRU_WRITE);
++		//Intercept read and write on LSTAR
++        hmR0VmxSetMsrPermission(pVCpu, MSR_K8_LSTAR,          VMXMSREXIT_INTERCEPT_READ, VMXMSREXIT_INTERCEPT_WRITE);
+         hmR0VmxSetMsrPermission(pVCpu, MSR_K6_STAR,           VMXMSREXIT_PASSTHRU_READ, VMXMSREXIT_PASSTHRU_WRITE);
+         hmR0VmxSetMsrPermission(pVCpu, MSR_K8_SF_MASK,        VMXMSREXIT_PASSTHRU_READ, VMXMSREXIT_PASSTHRU_WRITE);
+         hmR0VmxSetMsrPermission(pVCpu, MSR_K8_KERNEL_GS_BASE, VMXMSREXIT_PASSTHRU_READ, VMXMSREXIT_PASSTHRU_WRITE);
+@@ -4070,7 +4072,10 @@
+         {
+             pGuestMsr->u32Msr      = MSR_K8_LSTAR;
+             pGuestMsr->u32Reserved = 0;
++            pGuestMsr->u64Value    = CPUMR0GetGuestMsrLSTAR(pVCpu);
++            if(pGuestMsr->u64Value == 0){
+             pGuestMsr->u64Value    = pMixedCtx->msrLSTAR;           /* 64 bits mode syscall rip */
++			}
+             pGuestMsr++; cGuestMsrs++;
+             pGuestMsr->u32Msr      = MSR_K6_STAR;
+             pGuestMsr->u32Reserved = 0;
